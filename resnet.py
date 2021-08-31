@@ -272,7 +272,7 @@ class ResNet(nn.Module):
         # self.linear2.reset_parameters()
 
         # partial batch code, uncomment for whole batch
-        self.deactivateBN()
+        # self.deactivateBN()
         
         for m in self.layer4.modules():
             if isinstance(m, nn.Conv2d):
