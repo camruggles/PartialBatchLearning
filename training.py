@@ -35,7 +35,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyper-parameters
 # torch.backends.cudnn.benchmark = True
-num_epochs = 1 #10
+num_epochs = 10
 learning_rate = 0.1
 
 # Image preprocessing modules
@@ -186,7 +186,7 @@ else:
     model.load_state_dict(torch.load("resnet.ckpt"))
 print(time.time()-t1)
 
-num_epochs =1# 300
+num_epochs = 300
 
 model.setConstruction(True)
 # Construct SUFB
