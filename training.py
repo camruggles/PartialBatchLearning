@@ -140,45 +140,27 @@ if True:
         print("Time for epoch {} : {}".format(epoch+1, time.time()-te))
         
         if (epoch+1) % 10 == 0:
-                # Test the model
-                model.eval()
-                with torch.no_grad():
-                    correct = 0
-                    total = 0
-                    # test_loss = 0
-                    for images, labels in test_loader:
-                        images = images.to(device)
-                        labels = labels.to(device)
-                        idx = idx.to(device)
-                        outputs = model((images, idx))
-                        # loss = criterion(outputs,labels)
-                        # test_loss += loss.item()
-                        _, predicted = torch.max(outputs.data, 1)
-                        total += labels.size(0)
-                        correct += (predicted == labels).sum().item()
+            # Test the model
+            model.eval()
+            with torch.no_grad():
+                correct = 0
+                total = 0
+                # test_loss = 0
+                for images, labels in test_loader:
+                    images = images.to(device)
+                    labels = labels.to(device)
+                    idx = idx.to(device)
+                    outputs = model((images, idx))
+                    # loss = criterion(outputs,labels)
+                    # test_loss += loss.item()
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
 
-                    print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
-                    
-                model.train()
+                print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
+                
+            model.train()
     scheduler.step()
-
-    # Test the model
-    model.eval()
-    with torch.no_grad():
-        correct = 0
-        total = 0
-        for images, labels in test_loader:
-            images = images.to(device)
-            labels = labels.to(device)
-            idx = idx.to(device)
-            outputs = model((images, idx))
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-        print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
-        
-    model.train()
 
     # torch.save(model.state_dict(), 'resnet_60.ckpt')
     # quit()

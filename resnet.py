@@ -176,27 +176,9 @@ class ResNet(nn.Module):
         
         if normal:
             out = F.relu(self.bn1(self.conv1(x)))
-            if (torch.isnan(out).any()):
-                print("before layer 1")
-                pdb.set_trace()
             out = self.layer1(out)
-            if (torch.isnan(out).any()):
-                print("after layer 1")
-                pdb.set_trace()
-            # print(out.shape)
             out = self.layer2(out)
-            if (torch.isnan(out).any()):
-                print("after layer 2")
-                pdb.set_trace()
-            # print(out.shape)
             out = self.layer3(out)
-            if (torch.isnan(out).any()):
-                print("after layer 3")
-                pdb.set_trace()
-            # print(out.shape)
-            # out = self.layer4(out)
-            # out = F.avg_pool2d(out, 4)
-            # out = out.view(out.size(0), -1)
 
         if self.construct_SUFB: # cameron
             x = out
@@ -236,26 +218,12 @@ class ResNet(nn.Module):
             out = torch.cat((x,batchFeatures))
             # print('p2:', x.shape)
 
-
+        # for config 7, move this up
         out = self.layer4(out)
-        if (torch.isnan(out).any()):
-            print("after layer 4")
-            pdb.set_trace()
-        # print(out.shape)
         out = F.avg_pool2d(out, 4)
-        # print(out.shape)
         out = out.view(out.size(0), -1)
-        # print(out.shape)
 
         out = self.linear(out)
-        # out = F.relu(out)
-        # out = self.linear(out)
-        # print(out.shape)
-        # print('12:', x.shape)
-        # print("End forward pass")
-        #quit
-        # quit()
-
         return out
 
     def forward(self, x):
@@ -274,6 +242,7 @@ class ResNet(nn.Module):
         # partial batch code, uncomment for whole batch
         # self.deactivateBN()
         
+        # for config 7, comment out this code
         for m in self.layer4.modules():
             if isinstance(m, nn.Conv2d):
                 m.reset_parameters()
