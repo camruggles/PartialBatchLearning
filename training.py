@@ -5,8 +5,6 @@
 # https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py   #
 # ---------------------------------------------------------------------------- #
 
-# Currently : full batch, batch norm on, 
-
 
 
 import torch
@@ -34,7 +32,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # random.seed(seed)
 
 # Hyper-parameters
-# torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.benchmark = True
 num_epochs = 10
 learning_rate = 0.1
 
@@ -48,8 +46,6 @@ transform = transforms.Compose([
 ])
 
 
-
-# Cameron
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
@@ -71,8 +67,6 @@ class MyDataset(Dataset):
         return len(self.cifar10)
 
 train_dataset = MyDataset(transform)
-# end Cameron
-
 
 
 test_dataset = torchvision.datasets.CIFAR10(root='./data',
@@ -101,65 +95,61 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)#, weight_decay=5e-4)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
-# For updating learning rate
-def update_lr(optimizer, lr):    
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+
+def train_loop():
+    for i, (images, labels, idx) in enumerate(train_loader):
+        optimizer.zero_grad()
+        images = images.to(device)
+        
+        labels = labels.to(device)
+        idx = idx.to(device)
+        # Forward pass
+        outputs = model((images,idx))
+        loss = criterion(outputs, labels)
+
+        # Backward and optimize
+        loss.backward()
+        optimizer.step()
+
+        if (i+1) % 100 == 0:
+            print ("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}"
+                .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
+
+
+def test_loop():
+    idx = torch.zeros(1)
+    model.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in test_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            idx = idx.to(device)
+            outputs = model((images, idx))
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+        print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
+        
+    model.train()
 
 
 if True:
     # Train the model
     model.train()
     total_step = len(train_loader)
-    curr_lr = learning_rate
     for epoch in range(num_epochs):
         sys.stderr.write("Epoch %d\n" % (epoch))
         te = time.time()
-        for i, (images, labels, idx) in enumerate(train_loader):
-            optimizer.zero_grad()
-            images = images.to(device)
-            
-            labels = labels.to(device)
-            idx = idx.to(device)
-            # Forward pass
-            outputs = model((images,idx))
-            loss = criterion(outputs, labels)
 
-            # Backward and optimize
-            loss.backward()
-            optimizer.step()
+        train_loop()
 
-            if (i+1) % 100 == 0:
-                print ("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}"
-                    .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
-
-        # Decay learning rate
-        # if (epoch+1) % 20 == 0:
-        #     curr_lr /= 3
-        #     update_lr(optimizer, curr_lr)
         print("Time for epoch {} : {}".format(epoch+1, time.time()-te))
         
         if (epoch+1) % 10 == 0:
-            # Test the model
-            model.eval()
-            with torch.no_grad():
-                correct = 0
-                total = 0
-                # test_loss = 0
-                for images, labels in test_loader:
-                    images = images.to(device)
-                    labels = labels.to(device)
-                    idx = idx.to(device)
-                    outputs = model((images, idx))
-                    # loss = criterion(outputs,labels)
-                    # test_loss += loss.item()
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
-
-                print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
-                
-            model.train()
+            test_loop()
     scheduler.step()
 
     # torch.save(model.state_dict(), 'resnet_60.ckpt')
@@ -168,7 +158,7 @@ else:
     model.load_state_dict(torch.load("resnet.ckpt"))
 print(time.time()-t1)
 
-num_epochs = 300
+num_epochs = 200
 
 model.setConstruction(True)
 # Construct SUFB
@@ -187,13 +177,11 @@ model.preparePhaseTwo()
 
 t1 = time.time()
 # Train the model phase two
-# update_lr(optimizer, learning_rate)
 
 optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
 
 
-# model.deactivateBN()
 model.train()
 model.setPhaseTwo(True)
 
@@ -202,51 +190,14 @@ total_step = len(train_loader)
 for epoch in range(num_epochs):
     sys.stderr.write("Epoch %d\n" % (epoch+1))
     te=time.time()
-    for i, (images, labels, idx) in enumerate(train_loader):
-        # if i == 28:
-        #     pdb.set_trace()
-        optimizer.zero_grad()
-        images = images.to(device)
-        labels = labels.to(device)
-        idx = idx.to(device)
-
-        # Forward pass
-        outputs = model((images,idx)) # cameron
-        loss = criterion(outputs, labels)
-        if torch.isnan(loss).item():
-            pdb.set_trace()
-
-        # Backward and optimize
-        loss.backward()
-        optimizer.step()
-
-        if (i+1) % 100 == 0:
-            print ("Epoch [{}/{}], Step [{}/{}] Loss: {:.4f}"
-                   .format(epoch+1, num_epochs, i+1, total_step, loss.item()))
     
+    train_loop()
     print("Time for epoch {} : {} ".format(epoch+1, time.time() - te))
-    # Decay learning rate
-    if (epoch+1) % 2 == 0:
-        # curr_lr /= 3
-        # update_lr(optimizer, curr_lr)
-        # Test the model
-        model.eval()
-        model.setPhaseTwo(False)
-        with torch.no_grad():
-            correct = 0
-            total = 0
-            for images, labels in test_loader:
-                images = images.to(device)
-                labels = labels.to(device)
-                idx = idx.to(device)
-                outputs = model((images, idx))
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
 
-            print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
-        # deactivateBN
-        model.train()
+    if (epoch+1) % 2 == 0:
+        # Test the model
+        model.setPhaseTwo(False)
+        test_loop()
         model.setPhaseTwo(True)
     
     scheduler.step()
@@ -256,21 +207,7 @@ model.deactivatePhaseTwo()
 
 
 # Test the model
-model.eval()
-with torch.no_grad():
-    correct = 0
-    total = 0
-    for images, labels in test_loader:
-        images = images.to(device)
-        labels = labels.to(device)
-        idx = idx.to(device)
-        outputs = model((images, idx))
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-
-    print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))
-
+test_loop()
 
 # torch.save(model.state_dict(), 'resnet2p100.ckpt')
 

@@ -143,17 +143,8 @@ class ResNet(nn.Module):
             (x,idx) = y
             batchSize = x.shape[0]
         elif self.phase_two:
-            # print("should not be reached")
-            # figure out which indices will be re made and not re made
-            # move all the indices together for the ones that will be remade
-            # move all the indices together for the ones that won't be remade
-
-            # move all the target images together
-            # move all the non target images together
-
             # whole batch
             # (x,idx) = y
-
 
             # partial batch
             (mat,idx) = y
@@ -172,7 +163,6 @@ class ResNet(nn.Module):
         else:
             (x,idx)=y
             batchSize = x.shape[0]
-            # print(idx.shape)
         
         if normal:
             out = F.relu(self.bn1(self.conv1(x)))
@@ -180,18 +170,15 @@ class ResNet(nn.Module):
             out = self.layer2(out)
             out = self.layer3(out)
 
-        if self.construct_SUFB: # cameron
+        if self.construct_SUFB:
             x = out
-            # print("should not be reached")
             for i in range(batchSize):
                 f = x[i,:]
                 self.features[idx[i]] = f
             return torch.zeros(self.num_classes)
         
         if self.phase_two:
-            # print("should not be reached")
             batchFeatures = []
-            # use the indices to update the list
             if normal:
                 x = out
                 # partial batch, for whole batch change to range(batchSize)
@@ -200,7 +187,6 @@ class ResNet(nn.Module):
                     self.features[idx[i]] = f.clone().detach()
                 
             
-            # use the non-target indices to get all of the non-target features
             else:
                 pass
                 # whole batch code
@@ -213,10 +199,7 @@ class ResNet(nn.Module):
             for index in idx2:
                 batchFeatures.append(self.features[index])
             batchFeatures = torch.stack(batchFeatures)
-            # merge x with the non target features
-            # still partial batch code
             out = torch.cat((x,batchFeatures))
-            # print('p2:', x.shape)
 
         # for config 7, move this up
         out = self.layer4(out)
@@ -235,16 +218,15 @@ class ResNet(nn.Module):
         #     if isinstance(m, nn.BatchNorm2d):
         #         m.eval()
     
-    def preparePhaseTwo(self): #cameron
+    def preparePhaseTwo(self):
         self.linear.reset_parameters()
-        # self.linear2.reset_parameters()
-
-        # partial batch code, uncomment for whole batch
-        # self.deactivateBN()
         
         # for config 7, comment out this code
         for m in self.layer4.modules():
+            # m.reset_parameters()
             if isinstance(m, nn.Conv2d):
+                m.reset_parameters()
+            if isinstance(m,nn.BatchNorm2d):
                 m.reset_parameters()
         
         self.phase_two = True
@@ -255,7 +237,7 @@ class ResNet(nn.Module):
     def deactivatePhaseTwo(self):
         self.phase_two = False
     
-    def setConstruction(self, newVal): #cameron
+    def setConstruction(self, newVal):
         self.construct_SUFB = newVal
 
 
