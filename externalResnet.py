@@ -89,11 +89,8 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-
-
     def __init__(self, block, num_blocks, num_classes=10):
         
-
         super(ResNet, self).__init__()
         #cameron
         self.num_classes=10
@@ -102,6 +99,7 @@ class ResNet(nn.Module):
         self.features = []
         self.expand = block.expansion
         self.first = True
+        self.subBatchSize = 26
 
 
         self.in_planes = 64
@@ -117,10 +115,15 @@ class ResNet(nn.Module):
         # self.linear2 = nn.Linear(512*block.expansion, 512*block.expansion)
 
 
-
+    def storeFeatures(self, features):
+        self.features = features
+    
+    def retrieveFeatures(self):
+        return self.features
 
     def setFeatureBankSize(self, featureBankSize):
-        self.features = [torch.zeros(512*self.expand) for _ in range(featureBankSize)]
+        pass
+        # self.features = [torch.zeros(512*self.expand) for _ in range(featureBankSize)]
 
 
     def _make_layer(self, block, planes, num_blocks, stride):
@@ -133,7 +136,7 @@ class ResNet(nn.Module):
 
     def _forward_impl(self, y):
         normal = True
-        subBatchSize = 26
+        subBatchSize = self.subBatchSize
         batchSize = 0
         idx1, idx2, x, x2 = None, None, None, None
         # See note [TorchScript super()]
@@ -148,6 +151,7 @@ class ResNet(nn.Module):
             # partial batch
             (mat,idx) = y
             batchSize = mat.shape[0]
+            # mat = self.features #new
 
             idx1,idx2 = idx[0:subBatchSize], idx[subBatchSize:batchSize]
             x,x2 = mat[0:subBatchSize, :], mat[subBatchSize:batchSize, :]
@@ -168,17 +172,13 @@ class ResNet(nn.Module):
             
             out = self.layer1(out)
 
-            out = self.layer2(out)
-
-            out = self.layer3(out)
-
-
         if self.construct_SUFB:
             x = out
-            for i in range(batchSize):
-                f = x[i,:]
-                self.features[idx[i]] = f
-            return torch.zeros(self.num_classes)
+            return x
+            # for i in range(batchSize):
+            #     f = x[i,:]
+            #     self.features[idx[i]] = f
+            # return torch.zeros(self.num_classes)
         
         if self.phase_two:
             batchFeatures = []
@@ -187,7 +187,7 @@ class ResNet(nn.Module):
                 # partial batch, for whole batch change to range(batchSize)
                 for i in range(subBatchSize):
                     f = x[i,:]
-                    self.features[idx[i]] = f.clone().detach()
+                    self.features[i] = f.clone().detach()
                 
             
             else:
@@ -199,18 +199,25 @@ class ResNet(nn.Module):
                 # out = batchFeatures
 
             # partial batch code
-            for index in idx2:
-                batchFeatures.append(self.features[index])
-            batchFeatures = torch.stack(batchFeatures)
+            # for index in idx2:
+            #     batchFeatures.append(self.features[index])
+            batchFeatures = self.features[subBatchSize:, :] #torch.stack(batchFeatures)
             out = torch.cat((x,batchFeatures))
 
+
+
+        out = self.layer2(out)
+
+        out = self.layer3(out)
 
         out = self.layer4(out)
         out = F.avg_pool2d(out, 4)
         out = out.view(out.size(0), -1)
-
         out = self.linear(out)
         return out
+    
+    def getSubBatchSize(self):
+        return self.subBatchSize
 
     def forward(self, x):
         return self._forward_impl(x)
